@@ -1,0 +1,69 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.0.4'
+	id 'io.spring.dependency-management' version '1.1.0'
+	id 'com.bmuschko.docker-java-application' version '9.2.1'
+	id "com.dorongold.task-tree" version "2.1.1"
+	id 'org.unbroken-dome.helm' version '1.7.0'
+}
+
+group = 'com.swisscom'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '17'
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
+docker {
+	javaApplication{
+		baseImage = 'openjdk:17-jdk-slim'
+		ports = [8080]
+	}
+}
+
+tasks.register('deploy') {
+	dependsOn 'undeploy', 'dockerBuildImage'
+	doFirst {
+		println "Start!"
+	}
+	doLast {
+		exec {
+			workingDir  '.'
+			commandLine ('helm', 'install', 'hello-world', 'chart')
+		}
+		/*exec {
+			workingDir '.'
+			commandLine ('export', 'POD_NAME=$(kubectl get pods --namespace default -l "app.kubernetes.io/name=chart,app.kubernetes.io/instance=hello-world" -o jsonpath="{.items[0].metadata.name}")')
+		}*/
+		println "Executed!"
+	}
+}
+
+tasks.register('undeploy'){
+	doLast {
+		exec {
+			workingDir  '.'
+			commandLine ('helm', 'delete', 'hello-world')
+		}
+	}
+}
+
+tasks.register('deleteImage'){
+	doLast {
+		exec {
+			workingDir  '.'
+			commandLine ('docker', 'rmi', '', '-f')
+		}
+	}
+}
